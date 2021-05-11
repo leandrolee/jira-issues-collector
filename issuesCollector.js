@@ -153,17 +153,26 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		const throughput = Object.values(sorted).map(function(obj) {
 			return [obj['Sub-Imp']];
 		});
-		let initThroughputIndex = 6;
+		const initThroughputIndex = 6;
+		const lastThroughputIndex = initThroughputIndex + Object.keys(sorted).length - 1;
+		const lastTableIndex = 36;
 		const throughputRequest = {
 			spreadsheetId: sheetId,
 			valueInputOption: 'USER_ENTERED',
 			auth: client,
-			range: `Parâmetros!C${initThroughputIndex}:C${initThroughputIndex + Object.keys(sorted).length - 1}`,
+			range: `Parâmetros!C${initThroughputIndex}:C${lastThroughputIndex}`,
 			resource: {
 				values: throughput
 			},
 		};
 		await sheets.spreadsheets.values.update(throughputRequest);
+
+		const clearRequest = {
+			spreadsheetId: sheetId,
+			auth: client,
+			range: `Parâmetros!C${lastThroughputIndex + 1}:C${lastTableIndex}`
+		};
+		await sheets.spreadsheets.values.clear(clearRequest);
 	} catch(err) {
 		console.log(err);
 	}
