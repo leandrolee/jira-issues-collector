@@ -145,7 +145,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 			auth: client,
 			range: 'Parâmetros!C2:C3',
 			resource: {
-				values: [[moment(end_date).format('DD/MM/YYYY')], [parseInt(num_tasks)]]
+				values: [[moment(end_date).add(1, 'd').format('DD/MM/YYYY')], [parseInt(num_tasks)]]
 			},
 		};
 		await sheets.spreadsheets.values.update(dataRequest);
