@@ -22,4 +22,5 @@
 	- label: contabilizar apenas estórias com determinada label
 	- num_tasks: quantidade de tasks debaixo da estória que se deseja estimar
 	- sheet_id: id da planilha configurada na conta do Google
+
 ex.: npm --jira_host=jira.intranet.dominio.com.br/jira --jira_user=juser --jira_pass=mypass --done_story_statuses=Desenvolvido,"Em Produção" --done_task_statuses=Desenvolvido,Resolved --project=ABCDE --end_date=2021-01-15 --label=saturno --num_tasks=10 --sheet_id=1A2b3C-4d5E6f start
