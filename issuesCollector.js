@@ -186,7 +186,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		};
 		await sheets.spreadsheets.values.clear(clearRequest);
 
-		console.log("Done!");
+		console.log(`Done!\nhttps://docs.google.com/spreadsheets/d/${sheet_id}`);
 	} catch(err) {
 		console.log(err);
 	}
