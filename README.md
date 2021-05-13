@@ -6,9 +6,12 @@
 - Dar um nome para a conta, ex.: sheets-svc
 - Escolher acesso de 'Editor' para a conta de serviço
 - Após a criação, entrar na conta de serviço recém criada e no menu 'Chaves', adicionar uma nova chave do tipo json
-- Fazer download para a raíz do projeto com o nome 'keys.json'
+- Fazer download para a raíz do projeto com o nome 'keys.json', por segurança este arquivo só pode ser baixado logo após sua criação
 - De volta para a conta de serviço, copiar o e-mail dela
 - Na planilha, clicar em 'Compartilhar' e colar o e-mail da conta de serviço, o acesso deve ser de 'Editor'
+
+obs.: se o arquivo 'keys.json' não estiver na raíz do projeto, ele deve ser copiado do 'Google Drive' da conta do Google
+
 
 -== Execução ==-
 - Rodar 'npm <params...> start' na raíz do projeto, onde os <params...> obrigatórios são:
