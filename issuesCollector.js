@@ -52,12 +52,14 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		const boardIssues = await jira.searchJira(`project = ${project} AND (issuetype IN (Sub-Block, Sub-Imp, Sub-Bug, "Sub-A&D", "Sub-Daily and Alignments", Sub-DB, Sub-Test) AND issueFunction IN subtasksOf("project = ${project} AND status IN ('${done_story_statuses.join("', '")}')${label ? [' AND labels = ', label].join('') : ''}") OR issuetype IN (Incident, Block, "Daily and Alignments", "Suporte Negócios", "Suporte a equipes", Melhoria, Bug, "Service Request")) AND status changed during (${end_date ? (whole_weeks ? [last_weekday_with_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_with_end_date.format('YYYY-MM-DD')].join(', ') : [moment(end_date).subtract(num_weeks, 'weeks').format('YYYY-MM-DD'), end_date].join(', ')) : (whole_weeks ? [last_weekday_without_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_without_end_date.format('YYYY-MM-DD')].join(', ') : ['-', num_weeks, 'w, now()'].join(''))}) to ('${splitted_statuses.join("', '")}') ORDER BY Rank ASC`, {
 			startAt: 0,
 			maxResults: 1000,
-			fields: ['key', 'issuetype', 'summary', 'status', 'created', 'updated', 'timeoriginalestimate', 'timespent', 'labels'],
+			fields: ['key', 'issuetype', 'summary', 'status', 'created', 'updated', 'timeoriginalestimate', 'timespent', 'labels', 'parent'],
 			expand: ['changelog']
 		});
 		const byWeek = {};
 		const allIssues = {};
 		const allSubImpIssues = {};
+		const allSubBugIssues = {};
+		let subBugsAvg = 0;
 		let issueTypes = [];
 
 		for (const issue of boardIssues.issues) {
@@ -68,6 +70,11 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 				allSubImpIssues[issue.key] = {};
 				allSubImpIssues[issue.key]['Estimate'] = moment.duration(issue.fields.timeoriginalestimate, 'seconds').asHours();
 				allSubImpIssues[issue.key]['Logged'] = moment.duration(issue.fields.timespent, 'seconds').asHours();	
+			}
+
+			if (issue.fields.issuetype.name === 'Sub-Bug') {
+				allSubBugIssues[issue.key] = {};
+				allSubBugIssues[issue.key]['Parent'] = issue.fields.parent.key;
 			}
 
 			let startDate = moment(issue.fields.created, 'YYYY-MM-DDTHH:mm:ss');
@@ -133,10 +140,22 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		});
 
 		// Todas as issues do período
+		console.log('=== Todas as issues ===')
 		console.table(allIssues);
-		// Todas as Sub-Imp do período
+		// Todas as Sub-Imps do período
+		console.log('=== Todas as Sub-Imps ===')
 		console.table(allSubImpIssues);
-		// Quantidade de issues agrupadas pelas semanas do período
+		if (Object.keys(allSubBugIssues).length > 0) {
+			// Todos os Sub-Bugs do período com as respectivas estórias
+			console.log('=== Todas os Sub-Bugs ===')
+			console.table(allSubBugIssues);
+			const subBugsQtd = Object.keys(allSubBugIssues).length;
+			const subBugsParentsQtd = new Set(Object.values(allSubBugIssues).map(p => p.Parent)).size;
+			subBugsAvg = Math.ceil(subBugsQtd/2);
+			console.log(`Média arredondada de Sub-Bugs trabalhados por estória no período: ${subBugsAvg}`);
+		}
+		// Quantidade de issues agrupadas por tipo e pelas semanas do período
+		console.log('=== Issues por tipo e semana ===')
 		console.table(sorted);
 
 		// Atualização de valores na planilha do Google
@@ -155,7 +174,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 			auth: client,
 			range: 'Parâmetros!C2:C3',
 			resource: {
-				values: [[moment(end_date).add(1, 'd').format('DD/MM/YYYY')], [parseInt(num_tasks)]]
+				values: [[moment(end_date).add(1, 'd').format('DD/MM/YYYY')], [parseInt(num_tasks + subBugsAvg)]]
 			},
 		};
 		await sheets.spreadsheets.values.update(dataRequest);
