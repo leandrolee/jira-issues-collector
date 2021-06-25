@@ -37,7 +37,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 (async () => {
 	try {
 		const project = process.env.npm_config_project;
-		const done_story_statuses = process.env.npm_config_done_story_statuses.split(',');
+		const story_statuses = process.env.npm_config_story_statuses.split(',');
 		const splitted_statuses = process.env.npm_config_done_task_statuses.split(',');
 		const end_date = process.env.npm_config_end_date;
 		// Flag para considerar semanas inteiras (segunda à sexta)
@@ -49,7 +49,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		const num_tasks = process.env.npm_config_num_tasks || 1;
 		const sheet_id = process.env.npm_config_sheet_id;
 		// JQL executada no Jira
-		const boardIssues = await jira.searchJira(`project = ${project} AND (issuetype IN (Sub-Block, Sub-Imp, Sub-Bug, "Sub-A&D", "Sub-Daily and Alignments", Sub-DB, Sub-Test) AND issueFunction IN subtasksOf("project = ${project} AND status IN ('${done_story_statuses.join("', '")}')${label ? [' AND labels = ', label].join('') : ''}") OR issuetype IN (Incident, Block, "Daily and Alignments", "Suporte Negócios", "Suporte a equipes", Melhoria, Bug, "Service Request")) AND status changed during (${end_date ? (whole_weeks ? [last_weekday_with_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_with_end_date.format('YYYY-MM-DD')].join(', ') : [moment(end_date).subtract(num_weeks, 'weeks').format('YYYY-MM-DD'), end_date].join(', ')) : (whole_weeks ? [last_weekday_without_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_without_end_date.format('YYYY-MM-DD')].join(', ') : ['-', num_weeks, 'w, now()'].join(''))}) to ('${splitted_statuses.join("', '")}') ORDER BY Rank ASC`, {
+		const boardIssues = await jira.searchJira(`project = ${project} AND (issuetype IN (Sub-Block, Sub-Imp, Sub-Bug, "Sub-A&D", "Sub-Daily and Alignments", Sub-DB, Sub-Test) AND issueFunction IN subtasksOf("project = ${project} AND status IN ('${story_statuses.join("', '")}')${label ? [' AND labels = ', label].join('') : ''}") OR issuetype IN (Incident, Block, "Daily and Alignments", "Suporte Negócios", "Suporte a equipes", Melhoria, Bug, "Service Request")) AND status changed during (${end_date ? (whole_weeks ? [last_weekday_with_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_with_end_date.format('YYYY-MM-DD')].join(', ') : [moment(end_date).subtract(num_weeks, 'weeks').format('YYYY-MM-DD'), end_date].join(', ')) : (whole_weeks ? [last_weekday_without_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_without_end_date.format('YYYY-MM-DD')].join(', ') : ['-', num_weeks, 'w, now()'].join(''))}) to ('${splitted_statuses.join("', '")}') ORDER BY Rank ASC`, {
 			startAt: 0,
 			maxResults: 1000,
 			fields: ['key', 'issuetype', 'summary', 'status', 'created', 'updated', 'timeoriginalestimate', 'timespent', 'labels', 'parent'],
@@ -92,9 +92,15 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 
 						startDate = endDate;
 						if (splitted_statuses.includes(item.toString)) {
-							const issueDoneWeek = moment(change.created).format('w-YYYY');
+							const changeCreationDate = moment(change.created);
+							const issueDoneWeek = changeCreationDate.format('w-YYYY');
+							const startOfWeek = changeCreationDate.startOf('isoWeek').format('DD/MM/YYYY');
+							const endOfWeek = changeCreationDate.endOf('isoWeek').format('DD/MM/YYYY');
 							if (byWeek[issueDoneWeek] === undefined) {
-								byWeek[issueDoneWeek] = {};
+								byWeek[issueDoneWeek] = {
+									'De': startOfWeek,
+									'Até': endOfWeek,
+								};
 							}
 
 							if (byWeek[issueDoneWeek][issue.fields.issuetype.name] === undefined) {
@@ -174,7 +180,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 			auth: client,
 			range: 'Parâmetros!C2:C3',
 			resource: {
-				values: [[moment(end_date).add(1, 'd').format('DD/MM/YYYY')], [parseInt(num_tasks + subBugsAvg)]]
+				values: [[moment(end_date).add(1, 'd').format('DD/MM/YYYY')], [parseInt(num_tasks) + subBugsAvg]]
 			},
 		};
 		await sheets.spreadsheets.values.update(dataRequest);
