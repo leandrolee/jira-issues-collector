@@ -14,7 +14,7 @@ obs.: se o arquivo 'keys.json' não estiver na raíz do projeto, ele deve ser co
 
 
 -== Execução ==-
-- Rodar 'npm <params...> start' na raíz do projeto, onde os <params...> obrigatórios são:
+- Preencher os <params...> no arquivo .env que está na raiz do projeto
 	- jira_host: domínio onde o Jira Software está rodando
 	- jira_user: usuário que tenha acesso ao projeto de onde serão extraídas as métricas
 	- jira_pass: senha do usuário
@@ -27,5 +27,4 @@ obs.: se o arquivo 'keys.json' não estiver na raíz do projeto, ele deve ser co
 	- sheet_id: id da planilha configurada na conta do Google
 	- whole_weeks (default: true): flag utilizada para buscar métricas de semanas fechadas no Jira (segunda à sexta), caso o parâmetro end_date não seja o último dia da semana
 	- num_weeks (default: 12): quantidade das últimas semanas buscadas no Jira
-
-ex.: npm --jira_host=jira.intranet.dominio.com.br/jira --jira_user=juser --jira_pass=mypass --story_statuses="Em Desenvolvimento",Desenvolvido,"Em Produção" --done_task_statuses=Desenvolvido,Resolved --project=ABCDE --end_date=2021-01-15 --label=saturno --num_tasks=10 --sheet_id=1A2b3C-4d5E6f start
+- Rodar 'npm start' na raíz do projeto.

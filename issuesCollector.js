@@ -1,5 +1,6 @@
 import JiraApi from 'jira-client';
 import moment from 'moment-business-days';
+import { JIRA_HOST, JIRA_USER, JIRA_PASS, PROJECT, STORY_STATUSES, DONE_TASK_STATUSES, END_DATE, WHOLE_WEEKS, LABEL, NUM_WEEKS, NUM_TASKS, SHEET_ID } from "babel-dotenv";
 const { google } = require('googleapis');
 const sheets = google.sheets('v4');
 // Arquivo de chaves da conta de serviço do Google
@@ -14,9 +15,9 @@ moment.updateLocale('pt-br', {
 
 const jira = new JiraApi({
 	protocol: 'https',
-	host: process.env.npm_config_jira_host,
-	username: process.env.npm_config_jira_user,
-	password: process.env.npm_config_jira_pass,
+	host: JIRA_HOST,
+	username: JIRA_USER,
+	password: JIRA_PASS,
 	apiVersion: '2',
 	strictSSL: false
 });
@@ -36,18 +37,18 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 // TODO: Talvez pegar as informações de end_date, label e num_tasks a partir do id da estória recebido como parâmetro, eliminando a necessidade de informar estes 3 parâmetros
 (async () => {
 	try {
-		const project = process.env.npm_config_project;
-		const story_statuses = process.env.npm_config_story_statuses.split(',');
-		const splitted_statuses = process.env.npm_config_done_task_statuses.split(',');
-		const end_date = process.env.npm_config_end_date;
+		const project = PROJECT;
+		const story_statuses = STORY_STATUSES.split(', ');
+		const splitted_statuses = DONE_TASK_STATUSES.split(',');
+		const end_date = END_DATE;
 		// Flag para considerar semanas inteiras (segunda à sexta)
-		const whole_weeks = !!process.env.npm_config_whole_weeks || true;
-		const label = process.env.npm_config_label;
+		const whole_weeks = WHOLE_WEEKS;
+		const label = LABEL;
 		const last_weekday_with_end_date = moment(end_date).endOf('week').subtract(8, 'days');
 		const last_weekday_without_end_date = moment().endOf('week').subtract(8, 'days');
-		const num_weeks = process.env.npm_config_num_weeks || '12';
-		const num_tasks = process.env.npm_config_num_tasks || 1;
-		const sheet_id = process.env.npm_config_sheet_id;
+		const num_weeks = NUM_WEEKS;
+		const num_tasks = NUM_TASKS || 1;
+		const sheet_id = SHEET_ID;
 		// JQL executada no Jira
 		const boardIssues = await jira.searchJira(`project = ${project} AND (issuetype IN (Sub-Block, Sub-Imp, Sub-Bug, "Sub-A&D", "Sub-Daily and Alignments", Sub-DB, Sub-Test) AND issueFunction IN subtasksOf("project = ${project} AND status IN ('${story_statuses.join("', '")}')${label ? [' AND labels = ', label].join('') : ''}") OR issuetype IN (Incident, Block, "Daily and Alignments", "Suporte Negócios", "Suporte a equipes", Melhoria, Bug, "Service Request")) AND status changed during (${end_date ? (whole_weeks ? [last_weekday_with_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_with_end_date.format('YYYY-MM-DD')].join(', ') : [moment(end_date).subtract(num_weeks, 'weeks').format('YYYY-MM-DD'), end_date].join(', ')) : (whole_weeks ? [last_weekday_without_end_date.clone().subtract(num_weeks, 'weeks').add(3, 'days').format('YYYY-MM-DD'), last_weekday_without_end_date.format('YYYY-MM-DD')].join(', ') : ['-', num_weeks, 'w, now()'].join(''))}) to ('${splitted_statuses.join("', '")}') ORDER BY Rank ASC`, {
 			startAt: 0,
@@ -69,7 +70,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 			if (issue.fields.issuetype.name === 'Sub-Imp') {
 				allSubImpIssues[issue.key] = {};
 				allSubImpIssues[issue.key]['Estimate'] = moment.duration(issue.fields.timeoriginalestimate, 'seconds').asHours();
-				allSubImpIssues[issue.key]['Logged'] = moment.duration(issue.fields.timespent, 'seconds').asHours();	
+				allSubImpIssues[issue.key]['Logged'] = moment.duration(issue.fields.timespent, 'seconds').asHours();
 			}
 
 			if (issue.fields.issuetype.name === 'Sub-Bug') {
@@ -113,7 +114,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 						const nwh = countNonWorkingWeekdaysAndHolidaysInHours(startDate, endDate);
 
 						allIssues[issue.key][item.fromString] = (allIssues[issue.key][item.fromString] || 0) + (moment.duration(endDate.diff(startDate)).subtract(nwh, 'hours').asHours() / 3);
-						
+
 						if (issue.fields.issuetype.name === 'Sub-Imp' && item.fromString === 'In Progress') {
 							allSubImpIssues[issue.key][item.fromString] = (allSubImpIssues[issue.key][item.fromString] || 0) + (moment.duration(endDate.diff(startDate)).subtract(nwh, 'hours').asHours() / 3);
 						}
@@ -149,18 +150,18 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		Object.keys(allIssues).forEach((key) => {
 			for (const propName in allIssues[key]) {
 				if (propName !== 'Type') {
-					allIssues[key][propName] = Math.round((allIssues[key][propName] + Number.EPSILON) * 100) / 100;	
+					allIssues[key][propName] = Math.round((allIssues[key][propName] + Number.EPSILON) * 100) / 100;
 				}
 			}
 		});
 
 		Object.keys(allSubImpIssues).forEach((key) => {
 			for (const propName in allSubImpIssues[key]) {
-				allSubImpIssues[key][propName] = Math.round((allSubImpIssues[key][propName] + Number.EPSILON) * 100) / 100;	
+				allSubImpIssues[key][propName] = Math.round((allSubImpIssues[key][propName] + Number.EPSILON) * 100) / 100;
 			}
 		});
 
-		issueTypes = issueTypes.filter((value, index, self) => { 
+		issueTypes = issueTypes.filter((value, index, self) => {
 			return self.indexOf(value) === index;
   		});
 
