@@ -18,8 +18,8 @@ obs.: se o arquivo 'keys.json' não estiver na raíz do projeto, ele deve ser co
 	- jira_host: domínio onde o Jira Software está rodando
 	- jira_user: usuário que tenha acesso ao projeto de onde serão extraídas as métricas
 	- jira_pass: senha do usuário
-	- story_statuses: os status de uma estória na qual suas tasks serão consideradas como histórico
-	- done_task_statuses: os status em que se considera uma task finalizada
+	- story_statuses: os status de uma estória na qual suas tasks serão consideradas como histórico (separados por vírgula, sem espaço, ex.: STORY_STATUSES="Em Desenvolvimento,Desenvolvido,Em Produção")
+	- done_task_statuses: os status em que se considera uma task finalizada (separados por vírgula, sem espaço, ex.: DONE_TASK_STATUSES="Desenvolvido,Resolved")
 	- project: o código do projeto
 	- end_date: o último dia para qual as métricas devem ser extraídas, geralmente um dia antes do início de uma estória que se deseja estimar
 	- label: contabilizar apenas estórias com determinada label

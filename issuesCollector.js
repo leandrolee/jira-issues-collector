@@ -38,7 +38,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 (async () => {
 	try {
 		const project = PROJECT;
-		const story_statuses = STORY_STATUSES.split(', ');
+		const story_statuses = STORY_STATUSES.split(',');
 		const splitted_statuses = DONE_TASK_STATUSES.split(',');
 		const end_date = END_DATE;
 		// Flag para considerar semanas inteiras (segunda à sexta)
