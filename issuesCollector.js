@@ -46,6 +46,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		const label = LABEL;
 		const last_weekday_with_end_date = moment(end_date).endOf('week').subtract(8, 'days');
 		const last_weekday_without_end_date = moment().endOf('week').subtract(8, 'days');
+		const endD = `${end_date ? (whole_weeks ? last_weekday_with_end_date.format('YYYY-MM-DD') : end_date) : (whole_weeks ? last_weekday_without_end_date.format('YYYY-MM-DD') : moment().format('YYYY-MM-DD'))}`;
 		const num_weeks = NUM_WEEKS;
 		const num_tasks = NUM_TASKS || 1;
 		const sheet_id = SHEET_ID;
@@ -60,6 +61,7 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 		const allIssues = {};
 		const allSubImpIssues = {};
 		const allSubBugIssues = {};
+		const toRemove = new Set();
 		let subBugsAvg = 0;
 		let issueTypes = [];
 
@@ -111,40 +113,48 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 				const endDate = moment(change.created, 'YYYY-MM-DDTHH:mm:ss');
 				for (const item of change.items) {
 					if (item.field === 'status') {
-						const nwh = countNonWorkingWeekdaysAndHolidaysInHours(startDate, endDate);
+						if (moment(doneStatusesAccounted[issue.key].lastUpdated).isSameOrBefore(moment(endD).endOf('day'))) {
+							const nwh = countNonWorkingWeekdaysAndHolidaysInHours(startDate, endDate);
+							allIssues[issue.key][item.fromString] = (allIssues[issue.key][item.fromString] || 0) + (moment.duration(endDate.diff(startDate)).subtract(nwh, 'hours').asHours() / 3);
 
-						allIssues[issue.key][item.fromString] = (allIssues[issue.key][item.fromString] || 0) + (moment.duration(endDate.diff(startDate)).subtract(nwh, 'hours').asHours() / 3);
-
-						if (issue.fields.issuetype.name === 'Sub-Imp' && item.fromString === 'In Progress') {
-							allSubImpIssues[issue.key][item.fromString] = (allSubImpIssues[issue.key][item.fromString] || 0) + (moment.duration(endDate.diff(startDate)).subtract(nwh, 'hours').asHours() / 3);
-						}
-
-						startDate = endDate;
-						if (splitted_statuses.includes(item.toString)) {
-							const changeCreationDate = moment(change.created);
-							const issueDoneWeek = changeCreationDate.format('w-YYYY');
-							const startOfWeek = changeCreationDate.startOf('isoWeek').format('DD/MM/YYYY');
-							const endOfWeek = changeCreationDate.endOf('isoWeek').format('DD/MM/YYYY');
-							if (byWeek[issueDoneWeek] === undefined) {
-								byWeek[issueDoneWeek] = {
-									'De': startOfWeek,
-									'Até': endOfWeek,
-								};
+							if (issue.fields.issuetype.name === 'Sub-Imp' && item.fromString === 'In Progress') {
+								allSubImpIssues[issue.key][item.fromString] = (allSubImpIssues[issue.key][item.fromString] || 0) + (moment.duration(endDate.diff(startDate)).subtract(nwh, 'hours').asHours() / 3);
 							}
 
-							if (Object.keys(repeatedDoneTasks).length === 0 ||
-								 moment(change.created).isSame(repeatedDoneTasks[issue.key].lastUpdated)) {
-								if (byWeek[issueDoneWeek][issue.fields.issuetype.name] === undefined) {
-									byWeek[issueDoneWeek][issue.fields.issuetype.name] = 1;
-									issueTypes.push(issue.fields.issuetype.name);
-								} else {
-									byWeek[issueDoneWeek][issue.fields.issuetype.name] += 1;
+							startDate = endDate;
+							if (splitted_statuses.includes(item.toString)) {
+								const changeCreationDate = moment(change.created);
+								const issueDoneWeek = changeCreationDate.format('w-YYYY');
+								const startOfWeek = changeCreationDate.startOf('isoWeek').format('DD/MM/YYYY');
+								const endOfWeek = changeCreationDate.endOf('isoWeek').format('DD/MM/YYYY');
+								if (byWeek[issueDoneWeek] === undefined) {
+									byWeek[issueDoneWeek] = {
+										'De': startOfWeek,
+										'Até': endOfWeek,
+									};
+								}
+
+								if (Object.keys(repeatedDoneTasks).length === 0 ||
+									 moment(change.created).isSame(repeatedDoneTasks[issue.key].lastUpdated)) {
+									if (byWeek[issueDoneWeek][issue.fields.issuetype.name] === undefined) {
+										byWeek[issueDoneWeek][issue.fields.issuetype.name] = 1;
+										issueTypes.push(issue.fields.issuetype.name);
+									} else {
+										byWeek[issueDoneWeek][issue.fields.issuetype.name] += 1;
+									}
 								}
 							}
+						} else {
+							toRemove.add(issue.key);
 						}
 					}
 				}
 			}
+		}
+
+		for (let item of toRemove) {
+			delete allIssues[item];
+			delete allSubImpIssues[item];
 		}
 
 		Object.keys(allIssues).forEach((key) => {
