@@ -77,13 +77,41 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 				allSubBugIssues[issue.key]['Parent'] = issue.fields.parent.key;
 			}
 
+			const doneStatusesAccounted = {};
+			doneStatusesAccounted[issue.key] = {};
+			splitted_statuses.forEach(ss => {
+				doneStatusesAccounted[issue.key][ss] = 0;
+			});
+
+			for (const change of issue.changelog.histories) {
+				for (const i of change.items) {
+					if (i.field === 'status' && splitted_statuses.includes(i.toString)) {
+						if (doneStatusesAccounted[issue.key].lastUpdated === undefined ||
+							 moment(change.created, 'YYYY-MM-DDTHH:mm:ss').isAfter(moment(doneStatusesAccounted[issue.key].lastUpdated, 'YYYY-MM-DDTHH:mm:ss'))) {
+							doneStatusesAccounted[issue.key].lastUpdated = change.created;
+						}
+						doneStatusesAccounted[issue.key][i.toString] +=1;
+					}
+				}
+			}
+
+			const dsaKeys = Object.keys(doneStatusesAccounted);
+			const repeatedDoneTasks = {};
+			for (const k of dsaKeys) {
+				splitted_statuses.forEach(ss => {
+					if (doneStatusesAccounted[k][ss] !== undefined && doneStatusesAccounted[k][ss] > 1 && repeatedDoneTasks[k] === undefined) {
+						repeatedDoneTasks[k] = doneStatusesAccounted[k];
+					}
+				});
+			}
+
 			let startDate = moment(issue.fields.created, 'YYYY-MM-DDTHH:mm:ss');
 			for (const change of issue.changelog.histories) {
 				const endDate = moment(change.created, 'YYYY-MM-DDTHH:mm:ss');
 				for (const item of change.items) {
 					if (item.field === 'status') {
 						const nwh = countNonWorkingWeekdaysAndHolidaysInHours(startDate, endDate);
-						
+
 						allIssues[issue.key][item.fromString] = (allIssues[issue.key][item.fromString] || 0) + (moment.duration(endDate.diff(startDate)).subtract(nwh, 'hours').asHours() / 3);
 						
 						if (issue.fields.issuetype.name === 'Sub-Imp' && item.fromString === 'In Progress') {
@@ -103,11 +131,14 @@ const countNonWorkingWeekdaysAndHolidaysInHours = (startDate, endDate) => {
 								};
 							}
 
-							if (byWeek[issueDoneWeek][issue.fields.issuetype.name] === undefined) {
-								byWeek[issueDoneWeek][issue.fields.issuetype.name] = 1;
-								issueTypes.push(issue.fields.issuetype.name);
-							} else {
-								byWeek[issueDoneWeek][issue.fields.issuetype.name] += 1;
+							if (Object.keys(repeatedDoneTasks).length === 0 ||
+								 moment(change.created).isSame(repeatedDoneTasks[issue.key].lastUpdated)) {
+								if (byWeek[issueDoneWeek][issue.fields.issuetype.name] === undefined) {
+									byWeek[issueDoneWeek][issue.fields.issuetype.name] = 1;
+									issueTypes.push(issue.fields.issuetype.name);
+								} else {
+									byWeek[issueDoneWeek][issue.fields.issuetype.name] += 1;
+								}
 							}
 						}
 					}
